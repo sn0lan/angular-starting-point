@@ -2,10 +2,13 @@
 import gulp from 'gulp';
 import gulpLoadPlugins from 'gulp-load-plugins';
 import watchify from 'watchify';
+import browserify from 'browserify';
 import source from 'vinyl-source-stream';
 import templateCache from 'gulp-angular-templatecache';
 import browserSync from 'browser-sync';
 import del from 'del';
+import modRewrite from 'connect-modrewrite';
+
 import {stream as wiredep} from 'wiredep';
 
 const $ = gulpLoadPlugins();
@@ -40,6 +43,7 @@ function bundleJS(type){
               })
               .pipe(source('app.js'))
               .pipe(gulp.dest('.tmp/scripts'))
+              .pipe(gulp.dest('dist/scripts'))
               .on('end', function(){
                 console.log('Scripts Finished')
               });
@@ -47,24 +51,24 @@ function bundleJS(type){
       };
 
   // Are watching or just building?
-  bundler = watchify('./app/scripts/app');
+
+  bundler = type == "watchify"
+      ? watchify('./app/scripts/app')
+      : browserify('./app/scripts/app');
 
   bundler.on('update', bundle);
 
   return bundle();
 }
 
-gulp.task('scripts', () => {
-
-  return bundleJS();
-
-});
+gulp.task('scripts', () => { return bundleJS("watchify");  });
+gulp.task('buildScripts', () => { return bundleJS("browserify");  });
 
 gulp.task('templateCache', function () {
 
     return gulp.src('app/views/**/*')
         .pipe(templateCache('templates.js', {
-            module: 'appName'
+            module: 'pilgrimApp'
         }))
         .pipe(gulp.dest('.tmp/scripts'))
 });
@@ -143,7 +147,12 @@ gulp.task('serve', ['styles', 'scripts', 'templateCache', 'fonts'], () => {
       baseDir: ['.tmp', 'app'],
       routes: {
         '/bower_components': 'bower_components'
-      }
+      },
+      middleware: [
+                modRewrite([
+                    '!\\.\\w+$ /index.html [L]'
+                ])
+            ]
     }
   });
 
@@ -204,7 +213,7 @@ gulp.task('wiredep', () => {
     .pipe(gulp.dest('app'));
 });
 
-gulp.task('build', ['lint', 'html', 'images', 'fonts', 'extras'], () => {
+gulp.task('build', ['lint', 'buildScripts', 'html', 'images', 'fonts', 'extras'], () => {
   return gulp.src('dist/**/*').pipe($.size({title: 'build', gzip: true}));
 });
 

@@ -41,5 +41,9 @@
         "single"
       ]
     }
+  },
+  "dependencies": {
+    "browserify": "^13.0.0",
+    "connect-modrewrite": "^0.8.2"
   }
 }
